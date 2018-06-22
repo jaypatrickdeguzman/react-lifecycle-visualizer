@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 
 import * as constants from './constants';
 import * as ActionCreators from './redux/actionCreators';
-import { withDeprecationWarning } from './util';
+import * as util from './util';
 import LifecyclePanel from './components/LifecyclePanel';
 import { MConstructor, MShouldUpdate, MRender, MDidMount,
          MDidUpdate, MWillUnmount, MSetState, MGetDerivedState, MGetSnapshot,
@@ -17,7 +17,7 @@ export const resetInstanceIdCounters = () => {
   Object.keys(instanceIdCounters).forEach((k) => delete instanceIdCounters[k]);
 };
 
-export const clearInstanceIdCounters = withDeprecationWarning(
+export const clearInstanceIdCounters = util.withDeprecationWarning(
   constants.DEPRECATED_CLEAR_COUNTERS,
   resetInstanceIdCounters
 );
@@ -47,11 +47,11 @@ export default function traceLifecycle(ComponentToTrace) {
     constructor(props, context) {
       props.trace(MConstructor);
       super(props, context);
-      this.LifecyclePanel = withDeprecationWarning(
+      this.LifecyclePanel = util.withDeprecationWarning(
         constants.DEPRECATED_THIS_LIFECYCLE_PANEL,
         props.LifecyclePanel
       );
-      this.trace = withDeprecationWarning(
+      this.trace = util.withDeprecationWarning(
         constants.DEPRECATED_THIS_TRACE,
         props.trace
       );
@@ -196,7 +196,15 @@ export default function traceLifecycle(ComponentToTrace) {
     }
 
     render() {
-      return <TracedComponent LifecyclePanel={this.LifecyclePanel} trace={this.trace} {...this.props}/>;
+      const { forwardedRef, ...nonRefProps } = this.props;
+      return (
+        <TracedComponent
+          ref={forwardedRef}
+          LifecyclePanel={this.LifecyclePanel}
+          trace={this.trace}
+          {...nonRefProps}
+        />
+      );
     }
 
     // Get store directly from context, to prevent introducing extra `Connect` component.
@@ -237,5 +245,11 @@ export default function traceLifecycle(ComponentToTrace) {
     delete TracedComponent.prototype.UNSAFE_componentWillUpdate;
   }
 
-  return hoistStatics(TracingComponent, ComponentToTrace);
+  // Prior to v16.4, React.forwardRef triggered unnecessary renders, causing infinite loops.
+  // (see https://github.com/facebook/react/pull/12690)
+  const TracingComponentForwardedRef = util.reactVersionIsAtLeast(16, 4)
+        ? React.forwardRef((props, ref) => <TracingComponent {...props} forwardedRef={ref}/>)
+        : TracingComponent;
+
+  return hoistStatics(TracingComponentForwardedRef, ComponentToTrace);
 }

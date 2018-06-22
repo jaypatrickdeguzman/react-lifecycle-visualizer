@@ -41,7 +41,7 @@ afterEach(() => {
 
 describe('deprecated', () => {
   it('this.LifecyclePanel still works', () => {
-    const deprecatedInstance = wrapper.find(TracedDeprecated).childAt(0).instance();
+    const deprecatedInstance = wrapper.find('Deprecated').instance();
     const thisLifecyclePanel = deprecatedInstance.LifecyclePanel();
     expect(thisLifecyclePanel).toEqual(deprecatedInstance.props.LifecyclePanel());
   });

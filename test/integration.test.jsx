@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import { mount } from 'enzyme';
 
 import { clearLog, Log, resetInstanceIdCounters, VisualizerProvider } from '../src';
+import * as util from '../src/util';
 
 import TracedChild from './TracedChild';
 import TracedLegacyChild from './TracedLegacyChild';
@@ -18,7 +19,7 @@ class Wrapper extends Component {
     isShowingChild: false,             // For mounting/unmounting TracedChild
     isShowingLegacyChild: false,       // For mounting/unmounting TracedLegacyChild
     isShowingLegacyUnsafeChild: false, // For mounting/unmounting TracedLegacyUnsafeChild
-    legacyProp: 0                // For updating props on TracedLegacyChild
+    legacyProp: 0                      // For updating props on TracedLegacyChild
   }
 
   render() {
@@ -56,6 +57,21 @@ describe('traceLifecycle', () => {
   it('preserves static properties', () => {
     expect(TracedChild.staticProperty).toBe('a static property');
   });
+
+  if (util.reactVersionIsAtLeast(16, 4)) {
+    it('forwards refs', () => {
+      const refSpy = jest.fn();
+      const RefWrapper = () => (
+        <VisualizerProvider>
+          <TracedChild ref={refSpy}/>
+        </VisualizerProvider>
+      );
+      const refWrapper = mount(<RefWrapper/>);
+      const childInstance = refWrapper.find('Child').instance();
+
+      expect(refSpy).toHaveBeenCalledWith(childInstance);
+    });
+  }
 });
 
 describe('LifecyclePanel', () => {
@@ -110,9 +126,9 @@ describe('Log', () => {
   });
 
   it('logs all new lifecycle methods', () => {
-    wrapper.setState({isShowingChild: true});                      // Mount TracedChild
-    wrapper.find(TracedChild).childAt(0).instance().updateState(); // Update TracedChild state
-    wrapper.setState({isShowingChild: false});                     // Unmount TracedChild
+    wrapper.setState({isShowingChild: true});       // Mount TracedChild
+    wrapper.find('Child').instance().updateState(); // Update Child state
+    wrapper.setState({isShowingChild: false});      // Unmount TracedChild
     jest.runAllTimers();
     wrapper.update();
 
@@ -155,10 +171,10 @@ describe('Log', () => {
   });
 
   it('logs all legacy lifecycle methods', () => {
-    wrapper.setState({isShowingLegacyChild: true});                      // Mount TracedLegacyChild
-    wrapper.setState({legacyProp: 42});                                  // Update TracedLegacyChild props
-    wrapper.find(TracedLegacyChild).childAt(0).instance().updateState(); // Update TracedLegacyChild state
-    wrapper.setState({isShowingLegacyChild: false});                     // Unmount TracedLegacyChild
+    wrapper.setState({isShowingLegacyChild: true});       // Mount TracedLegacyChild
+    wrapper.setState({legacyProp: 42});                   // Update TracedLegacyChild props
+    wrapper.find('LegacyChild').instance().updateState(); // Update LegacyChild state
+    wrapper.setState({isShowingLegacyChild: false});      // Unmount TracedLegacyChild
 
     jest.runAllTimers();
     wrapper.update();
